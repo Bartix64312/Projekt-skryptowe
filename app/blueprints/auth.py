@@ -13,18 +13,13 @@ def login():
     form = LoginForm()
 
     if form.validate_on_submit():
-        # TODO: ZADANIE 1 - LOGOWANIE
-        # 1. Pobierz użytkownika z bazy danych na podstawie form.username.data
-        # 2. Sprawdź hasło używając metody user.check_password(form.password.data)
-        # 3. Jeśli poprawne:
-        #    - użyj funkcji login_user(user)
-        #    - wyświetl flash('Zalogowano pomyślnie!', 'success')
-        #    - przekieruj do ui.config
-        # 4. Jeśli błędne:
-        #    - wyświetl flash('Błąd logowania', 'danger')
-        
-        flash('Mechanizm logowania nie jest jeszcze zaimplementowany!', 'warning')
-        # pass
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user)
+            flash('Zalogowano pomyślnie!', 'success')
+            return redirect(url_for('ui.config'))
+        else:
+            flash('Błąd logowania. Sprawdź login i hasło.', 'danger')
 
     return render_template('login.html', form=form)
 
