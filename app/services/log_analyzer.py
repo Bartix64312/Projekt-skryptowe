@@ -41,8 +41,8 @@ class LogAnalyzer:
             user = row.get('user', 'unknown')
             
             # Ignorujemy lokalne
-            if ip in ['LOCAL', 'LOCAL_CONSOLE', '127.0.0.1', '::1']:
-                continue
+            #if ip in ['LOCAL', 'LOCAL_CONSOLE', '127.0.0.1', '::1']:
+             #   continue
 
             # =======================================================
             # TODO: ZADANIE 3 - LOGIKA SIEM (THREAT INTELLIGENCE)
@@ -55,7 +55,7 @@ class LogAnalyzer:
             # 3. Jeśli JEST w bazie -> Zaktualizuj mu last_seen.
             ip_entry = IPRegistry.query.filter_by(ip_address=ip).first()
 
-            if not ip_entry():
+            if not ip_entry:
                 ip_entry = IPRegistry(
                     ip_address = ip,
                     status='UNKNOWN',
@@ -91,7 +91,7 @@ class LogAnalyzer:
             db.session.add(new_alert)
             alerts_created += 1
             
-            pass # Usuń to po implementacji
+
 
         # Zatwierdzenie zmian w bazie
         db.session.commit()

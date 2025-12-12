@@ -111,7 +111,7 @@ class LogCollector:
     # METODA 2: WINDOWS (PowerShell + XML Parsing)
     # =========================================================================
     @staticmethod
-    def get_windows_logs(win_client, last_fetch_time=None):
+    def get_windows_logs(win_client, last_fetch=None):
         logs = []
         
         # Komenda PowerShell wzorowana na skrypcie 'collect_windows_logons_xml.ps1'.

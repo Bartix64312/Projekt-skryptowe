@@ -159,7 +159,12 @@ def fetch_logs(host_id):
     # 3. Archiwizacja (ETL - Load)
     # Zapisujemy surowe dane do Parquet dla celów dowodowych (forensics)
     try:
-        filename = DataManager.save_logs_to_parquet(logs, host_id=host.id)
+        save_result = DataManager.save_logs_to_parquet(logs, host_id=host.id)
+
+        if isinstance(save_result, tuple):
+            filename = save_result[0]
+        else:
+            filename = save_result
         
         # Rejestrujemy archiwum w bazie
         archive = LogArchive(host_id=host.id, filename=filename, record_count=len(logs))
@@ -193,6 +198,7 @@ def fetch_logs(host_id):
 # aby Panel Admina mógł zarządzać adresami IP, a Dashboard wyświetlać alerty.
 
 @api_bp.route("/ips", methods=["GET"])
+@login_required
 def get_ips():
     ips = IPRegistry.query.order_by(IPRegistry.last_seen.desc()).all()
     results = []
@@ -207,6 +213,7 @@ def get_ips():
 
 
 @api_bp.route("/ips", methods=["POST"])
+@login_required
 def add_ip():
     data = request.get_json()
     if not data or 'ip_address' not in data:
@@ -225,6 +232,7 @@ def add_ip():
 
 
 @api_bp.route("/ips/<int:ip_id>", methods=["PUT"])
+@login_required
 def update_ip(ip_id):
     ip_entry = IPRegistry.query.get_or_404(ip_id)
     data = request.get_json()
@@ -236,6 +244,7 @@ def update_ip(ip_id):
     return jsonify({"message": "Zaktualizowano status IP"}), 200
 
 @api_bp.route("/ips/<int:ip_id>", methods=["DELETE"])
+@login_required
 def delete_ip(ip_id):
     ip_entry = IPRegistry.query.get_or_404(ip_id)
     db.session.delete(ip_entry)
@@ -243,18 +252,20 @@ def delete_ip(ip_id):
     return jsonify({"message": "Usunięto adres IP z bazy"}), 200
 
 @api_bp.route("/alerts", methods=["GET"])
+@login_required
 def get_recent_alerts():
     alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(20).all()
-
+    
     results = []
     for alert in alerts:
         host_name = alert.host.hostname if alert.host else "Unknown Host"
         results.append({
             "id": alert.id,
             "severity": alert.severity,
-            "timestamp": alert.timestamp.strftime('%H:%M:%S'),
+            "timestamp": alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             "message": alert.message,
-            "host": host_name,
-            "sourceP_ip": alert.source_ip
+            "host_name": host_name,
+            "alert_type": alert.alert_type,
+            "source_ip": alert.source_ip
         })
     return jsonify(results)
