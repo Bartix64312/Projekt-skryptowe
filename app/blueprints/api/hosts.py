@@ -128,6 +128,8 @@ def fetch_logs(host_id):
         db.session.add(log_source)
         db.session.commit()
     
+    last_fetch_time = log_source.last_fetch
+    current_fetch_time = datetime.now()
     logs = []
     
     # 2. Pobieranie Logów (ETL - Extract)
@@ -140,15 +142,16 @@ def fetch_logs(host_id):
             # Context Manager dla połączenia SSH
             with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key) as client:
                 # Przekazujemy last_fetch aby pobrać tylko nowe logi
-                logs = LogCollector.get_linux_logs(client, last_fetch=log_source.last_fetch)
+                logs = LogCollector.get_linux_logs(client, last_fetch_time=None)
 
         elif host.os_type == "WINDOWS":
             # Context Manager dla klienta Windows (lokalny powershell/wmi)
             with WinClient() as client:
-                logs = LogCollector.get_windows_logs(client, last_fetch=log_source.last_fetch)
-        
+                logs = LogCollector.get_windows_logs(client, last_fetch=last_fetch_time)
+
         else:
             return jsonify({"error": "Unsupported OS type"}), 400
+        
 
     except Exception as e:
         return jsonify({"error": f"Connection/Collection failed: {str(e)}"}), 500
@@ -159,39 +162,58 @@ def fetch_logs(host_id):
     # 3. Archiwizacja (ETL - Load)
     # Zapisujemy surowe dane do Parquet dla celów dowodowych (forensics)
     try:
-        save_result = DataManager.save_logs_to_parquet(logs, host_id=host.id)
-
-        if isinstance(save_result, tuple):
-            filename = save_result[0]
-        else:
-            filename = save_result
+        filename, count = DataManager.save_logs_to_parquet(logs, host_id=host.id)
         
         # Rejestrujemy archiwum w bazie
-        archive = LogArchive(host_id=host.id, filename=filename, record_count=len(logs))
+        archive = LogArchive(host_id=host.id, timestamp=current_fetch_time, filename=filename, record_count=count)
         db.session.add(archive)
+        new_alerts_count = LogAnalyzer.analyze_parquet(filename, host.id)
         
         # Aktualizujemy stan (watermark) - ostatnie pobranie
-        log_source.last_fetch = datetime.now(timezone.utc)
+        log_source.last_fetch = current_fetch_time
         db.session.commit()
 
+        return jsonify({
+            "message": f"Success. Processed {count} logs.", 
+            "new_alerts": new_alerts_count
+        }), 200
+
     except Exception as e:
-        return jsonify({"error": f"Data archiving failed: {str(e)}"}), 500
+        db.session.rollback()
+        return jsonify({"error": f"Processing failed: {str(e)}"}), 500
+    
+@api_bp.route("/alerts", methods=["GET"])
+@login_required
+def get_recent_alerts():
+    alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(50).all()
 
-    # 4. Analiza (ETL - Transform/Analyze)
-    # Analizujemy zapisany plik w poszukiwaniu zagrożeń
-    try:
-        # LogAnalyzer zwraca liczbę wykrytych alertów (zapisuje je też w DB)
-        alerts_count = LogAnalyzer.analyze_parquet(filename, host.id)
-    except Exception as e:
-         # Nawet jak analiza padnie, to dane mamy już bezpieczne w Parquet
-        return jsonify({"message": f"Logs saved but analysis failed: {str(e)}", "alerts": 0}), 200
+    ip_registry = {ip.ip_address: ip.status for ip in IPRegistry.query.all()}
 
-    return jsonify({
-        "message": f"Fetched {len(logs)} logs", 
-        "archive": filename,
-        "alerts": alerts_count
-    }), 200
+    results = []
+    for alert in alerts:
+        current_status = ip_registry.get(alert.source_ip, 'UNKNOWN')
 
+        display_severity = alert.severity
+        display_message = alert.message
+
+        if current_status =='TRUSTED':
+            display_severity = 'INFO'
+            display_message = f"[TRUSTED] {alert.message}"
+        elif current_status == 'BANNED':
+            display_severity = 'CRITICAL'
+            display_message = f"[BANNED] {alert.message}"
+
+        host_name = alert.host.hostname if alert.host else "Unknown"
+        results.append({
+            "id": alert.id,
+            "severity": display_severity, 
+            "timestamp": alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            "message": display_message, 
+            "host_name": host_name,
+            "alert_type": alert.alert_type,
+            "source_ip": alert.source_ip
+        })
+    return jsonify(results)
 
 # TODO: ZADANIE 3 - API DLA REJESTRU IP I ALERTÓW
 # Poniższe endpointy są zakomentowane. Musisz je odblokować i ewentualnie uzupełnić,
@@ -250,22 +272,3 @@ def delete_ip(ip_id):
     db.session.delete(ip_entry)
     db.session.commit()
     return jsonify({"message": "Usunięto adres IP z bazy"}), 200
-
-@api_bp.route("/alerts", methods=["GET"])
-@login_required
-def get_recent_alerts():
-    alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(20).all()
-    
-    results = []
-    for alert in alerts:
-        host_name = alert.host.hostname if alert.host else "Unknown Host"
-        results.append({
-            "id": alert.id,
-            "severity": alert.severity,
-            "timestamp": alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            "message": alert.message,
-            "host_name": host_name,
-            "alert_type": alert.alert_type,
-            "source_ip": alert.source_ip
-        })
-    return jsonify(results)
