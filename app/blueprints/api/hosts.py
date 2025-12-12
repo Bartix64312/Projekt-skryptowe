@@ -195,25 +195,66 @@ def fetch_logs(host_id):
 @api_bp.route("/ips", methods=["GET"])
 def get_ips():
     ips = IPRegistry.query.order_by(IPRegistry.last_seen.desc()).all()
-    # Zwróć listę JSON
-    pass
+    results = []
+    for ip in ips:
+        results.append({
+            "id": ip.id,
+            "ip_address": ip.ip_address,
+            "status": ip.status,
+            "last_seen": ip.last_seen.isoformat() if ip.last_seen else None
+        })
+    return jsonify(results)
+
 
 @api_bp.route("/ips", methods=["POST"])
 def add_ip():
-    # Dodaj nowe IP (pamiętaj o commit)
-    pass
+    data = request.get_json()
+    if not data or 'ip_address' not in data:
+        return jsonify({"error": "Brak adresu IP"}), 400
+    if IPRegistry.query.filter_by(ip_address=data['ip_address']).first():
+        return jsonify({"error": "IP już istnieje w bazie"}), 409
+
+    new_ip = IPRegistry(
+        ip_address=data['ip_address'],
+        status=data.get('status', 'UNKNOWN'),
+        last_seen=datetime.now(timezone.utc)
+    )
+    db.session.add(new_ip)
+    db.session.commit()
+    return jsonify({"message": "Dodano adres IP"}), 201
+
 
 @api_bp.route("/ips/<int:ip_id>", methods=["PUT"])
 def update_ip(ip_id):
-    # Edycja statusu
-    pass
+    ip_entry = IPRegistry.query.get_or_404(ip_id)
+    data = request.get_json()
+    
+    if 'status' in data:
+        ip_entry.status = data['status']
+    
+    db.session.commit()
+    return jsonify({"message": "Zaktualizowano status IP"}), 200
 
 @api_bp.route("/ips/<int:ip_id>", methods=["DELETE"])
 def delete_ip(ip_id):
-    # Usuwanie
-    pass
+    ip_entry = IPRegistry.query.get_or_404(ip_id)
+    db.session.delete(ip_entry)
+    db.session.commit()
+    return jsonify({"message": "Usunięto adres IP z bazy"}), 200
 
 @api_bp.route("/alerts", methods=["GET"])
 def get_recent_alerts():
-    # Zwróć 20 ostatnich alertów posortowanych malejąco po dacie
-    pass
+    alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(20).all()
+
+    results = []
+    for alert in alerts:
+        host_name = alert.host.hostname if alert.host else "Unknown Host"
+        results.append({
+            "id": alert.id,
+            "severity": alert.severity,
+            "timestamp": alert.timestamp.strftime('%H:%M:%S'),
+            "message": alert.message,
+            "host": host_name,
+            "sourceP_ip": alert.source_ip
+        })
+    return jsonify(results)
