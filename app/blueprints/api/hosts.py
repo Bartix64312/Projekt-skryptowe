@@ -121,29 +121,71 @@ def get_windows_info(host_id):
 def fetch_logs(host_id):
     host = Host.query.get_or_404(host_id)
     
-    # Pobieramy lub tworzymy źródło logów
+    # 1. Zarządzanie Stanem: Pobieramy lub tworzymy źródło logów
     log_source = LogSource.query.filter_by(host_id=host.id).first()
     if not log_source:
         log_source = LogSource(host_id=host.id, log_type='security', last_fetch=None)
         db.session.add(log_source)
         db.session.commit()
     
-    # TODO: ZADANIE 2 - INTEGRACJA POBIERANIA LOGÓW
-    # Ten endpoint obecnie nic nie robi. Twoim zadaniem jest jego uzupełnienie.
-    # Wzoruj się na plikach 'test_real_ssh_logs.py' oraz 'test_windows_logs.py'.
+    logs = []
     
-    # KROKI DO WYKONANIA:
-    # 1. Sprawdź host.os_type (LINUX vs WINDOWS).
-    # 2. Użyj odpowiedniego klienta (RemoteClient lub WinClient).
-    # 3. Wywołaj LogCollector.get_linux_logs (lub windows) aby pobrać listę zdarzeń.
-    # 4. WAŻNE: Zapisz pobrane logi do pliku Parquet używając DataManager.save_logs_to_parquet().
-    #    Metoda ta zwróci nazwę pliku (filename).
-    # 5. Zaktualizuj log_source.last_fetch na bieżący czas.
-    # 6. Dodaj wpis do LogArchive (historia pobrań).
-    # 7. Wywołaj LogAnalyzer.analyze_parquet(filename, host.id) aby wykryć zagrożenia.
-    
-    # Na razie zwracamy błąd 501 (Not Implemented)
-    return jsonify({"message": "Funkcja API nie jest jeszcze gotowa", "alerts": 0}), 501
+    # 2. Pobieranie Logów (ETL - Extract)
+    try:
+        if host.os_type == "LINUX":
+            ssh_user = current_app.config.get("SSH_DEFAULT_USER", "vagrant")
+            ssh_port = current_app.config.get("SSH_DEFAULT_PORT", 2222)
+            ssh_key = current_app.config.get("SSH_KEY_FILE")
+            
+            # Context Manager dla połączenia SSH
+            with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key) as client:
+                # Przekazujemy last_fetch aby pobrać tylko nowe logi
+                logs = LogCollector.get_linux_logs(client, last_fetch=log_source.last_fetch)
+
+        elif host.os_type == "WINDOWS":
+            # Context Manager dla klienta Windows (lokalny powershell/wmi)
+            with WinClient() as client:
+                logs = LogCollector.get_windows_logs(client, last_fetch=log_source.last_fetch)
+        
+        else:
+            return jsonify({"error": "Unsupported OS type"}), 400
+
+    except Exception as e:
+        return jsonify({"error": f"Connection/Collection failed: {str(e)}"}), 500
+
+    if not logs:
+        return jsonify({"message": "No new logs found", "alerts": 0}), 200
+
+    # 3. Archiwizacja (ETL - Load)
+    # Zapisujemy surowe dane do Parquet dla celów dowodowych (forensics)
+    try:
+        filename = DataManager.save_logs_to_parquet(logs, host_id=host.id)
+        
+        # Rejestrujemy archiwum w bazie
+        archive = LogArchive(host_id=host.id, filename=filename, record_count=len(logs))
+        db.session.add(archive)
+        
+        # Aktualizujemy stan (watermark) - ostatnie pobranie
+        log_source.last_fetch = datetime.now(timezone.utc)
+        db.session.commit()
+
+    except Exception as e:
+        return jsonify({"error": f"Data archiving failed: {str(e)}"}), 500
+
+    # 4. Analiza (ETL - Transform/Analyze)
+    # Analizujemy zapisany plik w poszukiwaniu zagrożeń
+    try:
+        # LogAnalyzer zwraca liczbę wykrytych alertów (zapisuje je też w DB)
+        alerts_count = LogAnalyzer.analyze_parquet(filename, host.id)
+    except Exception as e:
+         # Nawet jak analiza padnie, to dane mamy już bezpieczne w Parquet
+        return jsonify({"message": f"Logs saved but analysis failed: {str(e)}", "alerts": 0}), 200
+
+    return jsonify({
+        "message": f"Fetched {len(logs)} logs", 
+        "archive": filename,
+        "alerts": alerts_count
+    }), 200
 
 
 # TODO: ZADANIE 3 - API DLA REJESTRU IP I ALERTÓW
