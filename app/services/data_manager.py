@@ -32,7 +32,7 @@ class DataManager:
                 df[col] = None
 
         # 3. Generujemy nazwę pliku
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H')
         filename = f"logs_{host_id}_{timestamp_str}.parquet"
         
         # ZAMIANA: Łączenie ścieżek operatorem '/' (Path) zamiast os.path.join

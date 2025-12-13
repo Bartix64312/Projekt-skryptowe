@@ -41,8 +41,8 @@ class LogAnalyzer:
             user = row.get('user', 'unknown')
             
             # Ignorujemy lokalne
-            if ip in ['LOCAL', 'LOCAL_CONSOLE', '127.0.0.1', '::1']:
-                continue
+            #if ip in ['LOCAL', 'LOCAL_CONSOLE', '127.0.0.1', '::1']:
+             #   continue
 
             # =======================================================
             # TODO: ZADANIE 3 - LOGIKA SIEM (THREAT INTELLIGENCE)
@@ -55,12 +55,13 @@ class LogAnalyzer:
             # 3. Jeśli JEST w bazie -> Zaktualizuj mu last_seen.
             ip_entry = IPRegistry.query.filter_by(ip_address=ip).first()
 
-            if not ip_entry():
+            if not ip_entry:
                 ip_entry = IPRegistry(
                     ip_address = ip,
                     status='UNKNOWN',
                     last_seen=current_time
                 )
+                db.session.add(ip_entry)
             else:
                 ip_entry.last_seen = current_time
 
@@ -78,20 +79,35 @@ class LogAnalyzer:
             #    - Domyślny poziom: 'WARNING'.
             #    - Jeśli IP ma status 'BANNED' -> Zmień poziom na 'CRITICAL' i dopisz to w treści.
             #    - Jeśli IP ma status 'TRUSTED' -> Możesz pominąć alert (continue) lub ustawić 'INFO'.
-            
+            log_timestamp = row['timestamp']
+            if isinstance(log_timestamp, str):
+                try:
+                    log_timestamp = datetime.fromisoformat(log_timestamp)
+                except:
+                    log_timestamp = current_time
+
+            existing_alert = Alert.query.filter_by(
+                host_id=host_id,
+                timestamp=log_timestamp,
+                message=message
+            ).first()
+
+            if existing_alert:
+                continue
+
             new_alert = Alert(
                 host_id=host_id,
                 alert_type=row['alert_type'],
                 source_ip=ip,
                 severity=severity,
                 message=message,
-                timestamp=current_time
+                timestamp=log_timestamp
             )
             # 6. Dodaj do sesji (db.session.add) i zwiększ licznik alerts_created.
             db.session.add(new_alert)
             alerts_created += 1
             
-            pass # Usuń to po implementacji
+
 
         # Zatwierdzenie zmian w bazie
         db.session.commit()

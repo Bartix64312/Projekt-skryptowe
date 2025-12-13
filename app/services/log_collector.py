@@ -111,8 +111,16 @@ class LogCollector:
     # METODA 2: WINDOWS (PowerShell + XML Parsing)
     # =========================================================================
     @staticmethod
-    def get_windows_logs(win_client, last_fetch_time=None):
+    def get_windows_logs(win_client, last_fetch=None):
         logs = []
+
+        ps_filter = "LogName='Security'; Id=4625"
+
+        if last_fetch:
+            date_str = last_fetch.strftime('%Y-%m-%d %H:%M:%S')
+            ps_filter += f"; StartTime=[datetime]'{date_str}'"
+
+        limit_part = "-MaxEvents 20" if not last_fetch else ""
         
         # Komenda PowerShell wzorowana na skrypcie 'collect_windows_logons_xml.ps1'.
         # 1. Get-WinEvent (ID 4625 = Failed Login)
@@ -123,7 +131,7 @@ class LogCollector:
         # Na potrzeby demo pobieramy MaxEvents=20 najnowszych, żeby nie zapchać łącza
         
         ps_cmd = (
-            "Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625} -MaxEvents 20 -ErrorAction SilentlyContinue | "
+            f"Get-WinEvent -FilterHashtable @{{{ps_filter}}} {limit_part} -ErrorAction SilentlyContinue | "
             "ForEach-Object { "
             "   $xml = [xml]$_.ToXml(); "
             "   $data = @{}; "
