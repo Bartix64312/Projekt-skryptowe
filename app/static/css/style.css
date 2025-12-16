@@ -1,16 +1,19 @@
 /* Sekcja HERO */
 .hero {
     height: 20vh;
-    background: linear-gradient(120deg, #0d6efd, #6610f2);
+    /* Cyborg uses #2A9FD6 for info/primary, #77B300 for success. adapting gradient */
+    background: linear-gradient(120deg, #2a9fd6, #77b300);
+    color: white;
 }
 
 /* Linki w liście */
 #linki a {
     text-decoration: none;
-    color: #0d6efd;
+    color: #2a9fd6; /* Cyborg Info Blue */
     font-weight: 500;
 }
 
 #linki a:hover {
     text-decoration: underline;
+    color: #fff;
 }
