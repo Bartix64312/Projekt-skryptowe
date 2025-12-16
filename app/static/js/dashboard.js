@@ -1,19 +1,66 @@
 import { createEl, clearContainer } from './dom.js';
 import { fetchHosts, checkHostStatus, triggerLogFetch } from './api.js'; 
-// TODO: Po uzupełnieniu api.js odkomentuj import poniżej:
 import { fetchAlerts } from './api.js';
 
 const hostsContainer = document.getElementById('hostsContainer');
 const alertsBody = document.getElementById('alertsBody');
 
+let chartInstance = null;
+
 export async function initDashboard() {
     if (!hostsContainer) return;
 
     await refreshHostsList();
+    await refreshChart();
 
     if (alertsBody) {
         await refreshAlertsTable();
     }
+}
+
+async function refreshChart() {
+    const ctx = document.getElementById('attacksChart');
+    if (!ctx) return;
+
+    try {
+        const res = await fetch('/api/stats/alerts', {headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
+        const data = await res.json();
+
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar', 
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Liczba alertów',
+                    data: data.values,
+                    backgroundColor: '#0dcaf0',
+                    borderColor: '#ffffff',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#ffffff' }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#ffffff' },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false 
+                    }
+                }
+            }
+        });
+    } catch (e) { console.error("Chart Error", e); }
 }
 
 async function refreshHostsList() {
@@ -119,12 +166,15 @@ async function handleFetchLogs(host, btn) {
 }
 
 function addBadge(parent, label, value, colorClass) {
-    const box = createEl('div', ['text-center', 'border', 'rounded', 'bg-light', 'py-1'], '', parent);
-    box.style.width = '24%'; 
+    const box = createEl('div', ['text-center', 'border', 'border-secondary', 'rounded', 'bg-dark', 'py-2', 'mx-1'], '', parent);
+    box.style.flex = "1"; 
+    
     const lbl = createEl('div', ['text-muted', 'text-uppercase'], label, box);
     lbl.style.fontSize = '0.65rem';
+    lbl.style.letterSpacing = '1px';
+    
     const val = createEl('div', ['fw-bold', 'text-nowrap', colorClass], value || '?', box);
-    val.style.fontSize = '0.8rem';
+    val.style.fontSize = '0.9rem';
 }
 
 /**
@@ -135,9 +185,6 @@ async function refreshAlertsTable() {
     clearContainer(alertsBody);
 
     try {
-        // TODO: ZADANIE 4 - ODKOMENTUJ POBIERANIE ALERTÓW
-        // Obecnie funkcja fetchAlerts nie istnieje w api.js.
-        // Dopóki jej nie napiszesz, poniższa linia będzie rzucać błąd (Uncaught ReferenceError).
         
         const alerts = await fetchAlerts();  
 
@@ -150,21 +197,45 @@ async function refreshAlertsTable() {
 
         alerts.forEach(alert => {
             const row = createEl('tr', [], '', alertsBody);
-            if (alert.severity === 'CRITICAL') row.classList.add('table-danger');
-            else if (alert.severity === 'WARNING') row.classList.add('table-warning');
-            
-            const utcDate = new Date(alert.timestamp.replace(" ", "T") + "Z");
-            createEl('td', [], utcDate.toLocaleString(), row);
+
+            row.className = ""; 
+            row.style.backgroundColor = "transparent"; 
+
+            let sideColor = "#6c757d"; 
+            let textColor = "text-white";
+
+            if (alert.severity === 'CRITICAL') {
+                sideColor = "#dc3545"; 
+                textColor = "text-danger";
+            } else if (alert.severity === 'WARNING') {
+                sideColor = "#ffc107"; 
+                textColor = "text-warning";
+            } else if (alert.severity === 'INFO') {
+                sideColor = "#0dcaf0"; 
+                textColor = "text-info";
+            }
+
+            row.style.borderLeft = `5px solid ${sideColor}`;
+    
+
+            createEl('td', [], alert.timestamp, row);
             createEl('td', ['fw-bold'], alert.host_name, row);
-            createEl('td', [], alert.alert_type, row); 
-            createEl('td', ['font-monospace'], alert.source_ip || '-', row);
-            createEl('td', [], alert.message, row);
-            
-            const badgeCell = createEl('td', [], '', row);
-            const badgeClasses = ['badge'];
-            if (alert.severity === 'CRITICAL') badgeClasses.push('bg-danger');
-            else badgeClasses.push('bg-warning', 'text-dark');
-            createEl('span', badgeClasses, alert.severity, badgeCell);
+            createEl('td', [textColor], alert.alert_type, row);
+            createEl('td', ['font-monospace'], alert.source_ip, row);
+            createEl('td', [], alert.message, row); 
+
+             const badgeCell = createEl('td', [], '', row);
+    
+            let badgeClass = '';
+            if (alert.severity === 'CRITICAL') {
+                badgeClass = 'bg-danger text-white'; 
+            } else if (alert.severity === 'WARNING') {
+                badgeClass = 'bg-warning text-dark'; 
+            } else {
+                badgeClass = 'bg-info text-dark';    
+            }
+    
+            createEl('span', ['badge', ...badgeClass.split(' ')], alert.severity, badgeCell);
         });
     } catch (err) {
         console.error("Błąd tabeli alertów:", err);

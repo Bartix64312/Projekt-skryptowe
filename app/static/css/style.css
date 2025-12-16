@@ -14,3 +14,7 @@
 #linki a:hover {
     text-decoration: underline;
 }
+.neon-header {
+    text-shadow: 0 0 10px rgba(13, 202, 240, 0.4); 
+    font-weight: 600;
+}

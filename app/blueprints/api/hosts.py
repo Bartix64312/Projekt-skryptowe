@@ -2,6 +2,7 @@ import time
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required
 from datetime import timezone, datetime
+from sqlalchemy import func
 import os
 
 from app.models import Host, LogSource, LogArchive, Alert, IPRegistry
@@ -186,38 +187,61 @@ def fetch_logs(host_id):
 @login_required
 def get_recent_alerts():
     alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(50).all()
-
     ip_registry = {ip.ip_address: ip.status for ip in IPRegistry.query.all()}
 
     results = []
     for alert in alerts:
         current_status = ip_registry.get(alert.source_ip, 'UNKNOWN')
-
-        display_severity = alert.severity
-        display_message = alert.message
-
-        if current_status =='TRUSTED':
-            display_severity = 'INFO'
-            display_message = f"[TRUSTED] {alert.message}"
-        elif current_status == 'BANNED':
+        
+        msg = alert.message
+        display_severity = 'WARNING' 
+        if current_status == 'BANNED':
             display_severity = 'CRITICAL'
-            display_message = f"[BANNED] {alert.message}"
+            if "BANNED" not in msg:
+                msg = f"SECURITY BREACH: Attack from BANNED IP {alert.source_ip}"
+        
+        elif current_status == 'TRUSTED':
+            display_severity = 'INFO'
+            msg = msg.replace("SECURITY BREACH: ", "").replace("Attack from BANNED IP", "Activity from")
+            msg = f"[TRUSTED] {msg}"
+            
+        else: 
+            if alert.severity == 'INFO':
+                display_severity = 'INFO'
+            else:
+                display_severity = 'WARNING'
+            msg = msg.replace("SECURITY BREACH: ", "")
+            msg = msg.replace("Attack from BANNED IP", "Suspicious attempt from")
 
         host_name = alert.host.hostname if alert.host else "Unknown"
+        
         results.append({
             "id": alert.id,
             "severity": display_severity, 
             "timestamp": alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            "message": display_message, 
+            "message": msg,
             "host_name": host_name,
             "alert_type": alert.alert_type,
             "source_ip": alert.source_ip
         })
+        
     return jsonify(results)
 
-# TODO: ZADANIE 3 - API DLA REJESTRU IP I ALERTÓW
-# Poniższe endpointy są zakomentowane. Musisz je odblokować i ewentualnie uzupełnić,
-# aby Panel Admina mógł zarządzać adresami IP, a Dashboard wyświetlać alerty.
+@api_bp.route("/stats/alerts", methods=["GET"])
+@login_required
+def get_alert_stats():
+    stats = db.session.query(
+        Alert.source_ip, 
+        func.count(Alert.id)
+    ).group_by(Alert.source_ip)\
+     .order_by(func.count(Alert.id).desc())\
+     .limit(5).all()
+
+    labels = [s[0] if s[0] else "Unknown" for s in stats]
+    values = [s[1] for s in stats]
+    
+    return jsonify({"labels": labels, "values": values})
+
 
 @api_bp.route("/ips", methods=["GET"])
 @login_required

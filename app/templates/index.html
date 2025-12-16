@@ -6,13 +6,13 @@
 <section class="py-4">
   <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Status Monitorowania</h2>
+        <h2 class="neon-header">Status Monitorowania</h2>
         <!-- Przycisk odświeżania dla całej strony -->
         <button onclick="location.reload()" class="btn btn-sm btn-outline-secondary">Odśwież widok</button>
     </div>
     
     <!-- Kontener, który obsłuży app/static/js/dashboard.js -->
-    <div id="hostsContainer" class="list-group">
+    <div id="hostsContainer" class="list-group mb-5">
         <div class="text-center py-5 text-muted">
             <div class="spinner-border text-primary mb-2" role="status"></div>
             <p>Ładowanie hostów...</p>
@@ -20,8 +20,9 @@
     </div>
 
     <!-- SEKCJA 2: Raport Bezpieczeństwa (Nowość) -->
-    <h3 class="mb-3 text-danger">Wykryte Zagrożenia (SIEM)</h3>
-    <div class="card shadow-sm">
+      <div class="mb-4">
+    <h3 class="mb-3 neon-header">Wykryte Zagrożenia (SIEM)</h3>
+    <div class="card shadow-sm border-danger">
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-striped table-hover mb-0" id="alertsTable">
@@ -43,8 +44,19 @@
               </tbody>
           </table>
         </div>
+        </div>
       </div>    
     </div>
+
+    <div class="col-lg-4">
+      <h3 class="mb-3 neon-header">Statystyki Alertów</h3>
+      <div class="card shadow-sm bg-dark border-info">
+        <div class="card-body">
+          <canvas id="attacksChart"></canvas>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 {% endblock %}
