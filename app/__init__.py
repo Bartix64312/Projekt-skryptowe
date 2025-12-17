@@ -34,6 +34,13 @@ def create_app(config_class=Config):
     # Wyłączenie CSRF dla API (fetch)
     #csrf.exempt(api_bp)
 
+    from flask_wtf.csrf import CSRFError
+    from flask import jsonify
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        return jsonify({"error": e.description}), 400
+
     # Auto-tworzenie bazy (opcjonalne, jeśli używamy migracji, ale wygodne)
     with app.app_context():
         db.create_all()

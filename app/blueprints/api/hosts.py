@@ -242,21 +242,19 @@ def get_alert_stats():
     
     return jsonify({"labels": labels, "values": values})
 
-
 @api_bp.route("/ips", methods=["GET"])
 @login_required
 def get_ips():
     ips = IPRegistry.query.order_by(IPRegistry.last_seen.desc()).all()
-    results = []
+    result = []
     for ip in ips:
-        results.append({
+        result.append({
             "id": ip.id,
             "ip_address": ip.ip_address,
             "status": ip.status,
-            "last_seen": ip.last_seen.isoformat() if ip.last_seen else None
+            "last_seen": ip.last_seen.strftime("%Y-%m-%d %H:%M:%S") if ip.last_seen else "-"
         })
-    return jsonify(results)
-
+    return jsonify(result)
 
 @api_bp.route("/ips", methods=["POST"])
 @login_required
@@ -264,12 +262,12 @@ def add_ip():
     data = request.get_json()
     if not data or 'ip_address' not in data:
         return jsonify({"error": "Brak adresu IP"}), 400
+        
     if IPRegistry.query.filter_by(ip_address=data['ip_address']).first():
-        return jsonify({"error": "IP już istnieje w bazie"}), 409
-
+        return jsonify({"error": "IP już istnieje w rejestrze"}), 409
+        
     new_ip = IPRegistry(
         ip_address=data['ip_address'],
-        status=data.get('status', 'UNKNOWN'),
         last_seen=datetime.now(timezone.utc)
     )
     db.session.add(new_ip)
