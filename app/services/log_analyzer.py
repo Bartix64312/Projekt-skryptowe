@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from app.extensions import db
 from app.models import Alert, IPRegistry, Host
 from app.services.data_manager import DataManager
@@ -39,20 +39,7 @@ class LogAnalyzer:
         for index, row in threats.iterrows():
             ip = row['source_ip']
             user = row.get('user', 'unknown')
-            
-            # Ignorujemy lokalne
-            #if ip in ['LOCAL', 'LOCAL_CONSOLE', '127.0.0.1', '::1']:
-             #   continue
 
-            # =======================================================
-            # TODO: ZADANIE 3 - LOGIKA SIEM (THREAT INTELLIGENCE)
-            # =======================================================
-            
-            # Twoim zadaniem jest ocena powagi incydentu w oparciu o bazę IPRegistry.
-            
-            # 1. Sprawdź, czy adres IP (zmienna 'ip') znajduje się w tabeli IPRegistry.
-            # 2. Jeśli NIE MA go w bazie -> Dodaj go ze statusem 'UNKNOWN' i obecnym czasem (last_seen).
-            # 3. Jeśli JEST w bazie -> Zaktualizuj mu last_seen.
             ip_entry = IPRegistry.query.filter_by(ip_address=ip).first()
 
             if not ip_entry:
@@ -68,6 +55,21 @@ class LogAnalyzer:
             severity = 'WARNING'
             message = f"Suspicious login attempt for IP: {ip} (User: {user})"
             
+            time_treshold = current_time - timedelta(minutes=15)
+
+            cross_host_attacks = Alert.query.filter(
+                Alert.source_ip == ip,
+                Alert.host_id != host_id,
+                Alert.timestamp >= time_treshold
+            ).count()
+
+            if cross_host_attacks > 0 and ip_entry.status != 'TRUSTED':
+                severity = 'CRITICAL'
+                message = f"DISTRIBUTED ATTACK: IP {ip} attacking multiple hosts!"
+
+                ip_entry.status = 'BANNED'
+                db.session.add(ip_entry)
+
             if ip_entry.status == 'TRUSTED':
                 severity = 'INFO'
                 continue

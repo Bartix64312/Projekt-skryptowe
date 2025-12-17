@@ -1,32 +1,44 @@
-/**
- * Wrapper na Fetch API do komunikacji z backendem Flask
- */
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+async function secureFetch(url, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+        ...options.headers
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    if(!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Błąd HTTP ${response.status}`);
+    }
+    return response.json();
+}
 
 // --- HOSTS (GOTOWE - WZÓR) ---
 export async function fetchHosts() {
-    const res = await fetch('/api/hosts');
-    return await res.json();
+    return await secureFetch('/api/hosts');
 }
 export async function createHost(data) {
-    const res = await fetch('/api/hosts', {
+    return await secureFetch('/api/hosts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    if(!res.ok) throw new Error((await res.json()).error);
-    return await res.json();
 }
 export async function updateHost(id, data) {
-    const res = await fetch(`/api/hosts/${id}`, {
+    return await secureFetch(`/api/hosts/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    if(!res.ok) throw new Error('Błąd edycji hosta');
-    return await res.json();
 }
 export async function removeHost(id) {
-    await fetch(`/api/hosts/${id}`, { method: 'DELETE' });
+    return await secureFetch(`/api/hosts/${id}`, {
+        method: 'DELETE'
+    });
 }
 
 // --- MONITORING / LOGI (GOTOWE) ---
@@ -35,79 +47,43 @@ export async function checkHostStatus(id, osType) {
         ? `/api/hosts/${id}/ssh-info` 
         : `/api/hosts/${id}/windows-info`;
         
-    const res = await fetch(endpoint);
-    if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || `Błąd HTTP ${res.status}`);
-    }
-    return await res.json();
+    return await secureFetch(endpoint);
 }
 
 export async function triggerLogFetch(hostId) {
-    const res = await fetch(`/api/hosts/${hostId}/logs`, {
+    return await secureFetch(`/api/hosts/${hostId}/logs`, {
         method: 'POST'
     });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Błąd pobierania logów');
-    }
-    return await res.json();
 }
 
-// ===============================================================
-// TODO: ZADANIE 4 - KOMUNIKACJA FRONTEND-BACKEND
-// ===============================================================
-// Brakuje funkcji do obsługi Rejestru IP oraz Alertów.
-// Panel Admina i Dashboard będą rzucać błędy, dopóki tego nie uzupełnisz.
-// Wzoruj się na funkcjach z sekcji HOSTS powyżej.
-
-
 export async function fetchIPs() {
-    const res = await fetch('/api/ips');
-    if (!res.ok) throw new Error('Nie udało się pobrać listy IP');
-    return await res.json();
+    return await secureFetch('/api/ips');
 }
 
 export async function createIP(data) {
-    const res = await fetch('/api/ips', {
+    return await secureFetch('/api/ips', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Błąd dodawania adresu IP');
-    }
-    return await res.json();
 }
 
 export async function updateIP(id, data) {
-    const res = await fetch(`/api/ips/${id}`, {
+    return await secureFetch(`/api/ips/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-
-    if (!res.ok) {
-        throw new Error('Błąd aktualizacji statusu IP');
-    }
-    return await res.json();
 }
 
 export async function removeIP(id) {
-    const res = await fetch(`/api/ips/${id}`, { 
+    const res = await secureFetch(`/api/ips/${id}`, { 
         method: 'DELETE' 
     });
-    
-    if (!res.ok) {
-        throw new Error('Błąd usuwania adresu IP');
-    }
-    return await res.json();
 }
 
 export async function fetchAlerts() {
-    const res = await fetch('/api/alerts');
-    if (!res.ok) throw new Error('Nie udało się pobrać alertów');
-    return await res.json();
+    return await secureFetch('/api/alerts');
+}
+
+export async function fetchAlertStats() {
+    return await secureFetch('/api/stats/alerts');
 }
