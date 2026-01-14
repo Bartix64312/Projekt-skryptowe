@@ -9,18 +9,19 @@ def main():
     port = Config.SSH_DEFAULT_PORT
     user = Config.SSH_DEFAULT_USER
     key_path = Config.SSH_KEY_FILE
+    password = Config.SSH_PASSWORD
 
     print(f"--- TEST POŁĄCZENIA SSH: {user}@{host}:{port} ---")
-    print(f"--- KLUCZ: {key_path} ---")
+    print(f"--- KLUCZ: {key_path} | HASŁO: {'***' if password else 'BRAK'} ---")
 
-    # 2. Szybkie sprawdzenie czy klucz istnieje
-    if not key_path or not os.path.exists(key_path):
-        print(f"❌ BŁĄD: Nie znaleziono pliku klucza pod ścieżką: {key_path}")
+    # 2. Szybkie sprawdzenie czy mamy czym się uwierzytelnić
+    if (not key_path or not os.path.exists(key_path)) and not password:
+        print(f"❌ BŁĄD: Brak metod uwierzytelniania! (Brak pliku klucza: {key_path} oraz brak hasła)")
         return
 
     try:
         # 3. Nawiązanie połączenia
-        with RemoteClient(host=host, user=user, port=port, key_file=key_path) as client:
+        with RemoteClient(host=host, user=user, port=port, key_file=key_path, password=password) as client:
             print("✅ Połączono. Pobieram logi...")
 
             # 4. Pobranie logów (korzystamy z naszej nowej logiki z Regexami)

@@ -14,7 +14,8 @@ class Config:
     # Konfiguracja SSH (Domyślne dla Vagranta)
     SSH_DEFAULT_USER = os.getenv('SSH_DEFAULT_USER', 'vagrant')
     SSH_DEFAULT_PORT = int(os.getenv('SSH_DEFAULT_PORT', 2222))
-    SSH_KEY_FILE = os.getenv('SSH_KEY_FILE', '') 
+    SSH_KEY_FILE = os.getenv('SSH_KEY_FILE', '')
+    SSH_PASSWORD = os.getenv('SSH_PASSWORD', None) 
 
     # Folder na logi (Parquet)
     STORAGE_FOLDER = Path.cwd() / 'storage' # Domyślny folder na logi

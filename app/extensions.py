@@ -5,5 +5,5 @@ from flask_wtf.csrf import CSRFProtect  # <--- NOWOŚĆ
 
 db = SQLAlchemy()
 migrate = Migrate()
-login_manager = LoginManager()  # <--- NOWOŚĆ
-csrf = CSRFProtect()  # <--- NOWOŚĆ
+login_manager = LoginManager() 
+csrf = CSRFProtect()  #

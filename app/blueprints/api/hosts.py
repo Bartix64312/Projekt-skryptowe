@@ -63,8 +63,9 @@ def get_ssh_info(host_id):
     ssh_user = current_app.config.get("SSH_DEFAULT_USER", "vagrant")
     ssh_port = current_app.config.get("SSH_DEFAULT_PORT", 2222)
     ssh_key = current_app.config.get("SSH_KEY_FILE")
+    ssh_password = current_app.config.get("SSH_PASSWORD")
     try:
-        with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key) as remote:
+        with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key, password=ssh_password) as remote:
             ram_out, _ = remote.run("free -m | grep Mem | awk '{print $7}'")
             disk_percentage, _ = remote.run("df -h | grep '/$' | awk '{print $5}'")
             if not disk_percentage: disk_percentage, _ = remote.run("df -h | grep '/dev/sda1' | awk '{print $5}'")
@@ -139,16 +140,17 @@ def fetch_logs(host_id):
             ssh_user = current_app.config.get("SSH_DEFAULT_USER", "vagrant")
             ssh_port = current_app.config.get("SSH_DEFAULT_PORT", 2222)
             ssh_key = current_app.config.get("SSH_KEY_FILE")
+            ssh_password = current_app.config.get("SSH_PASSWORD")
             
             # Context Manager dla połączenia SSH
-            with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key) as client:
+            with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key, password=ssh_password) as client:
                 # Przekazujemy last_fetch aby pobrać tylko nowe logi
-                logs = LogCollector.get_linux_logs(client, last_fetch_time=None)
+                logs = LogCollector.get_linux_logs(client, last_fetch_time=last_fetch_time)
 
         elif host.os_type == "WINDOWS":
             # Context Manager dla klienta Windows (lokalny powershell/wmi)
             with WinClient() as client:
-                logs = LogCollector.get_windows_logs(client, last_fetch=last_fetch_time)
+                logs = LogCollector.get_windows_logs(client, last_fetch_time=last_fetch_time)
 
         else:
             return jsonify({"error": "Unsupported OS type"}), 400

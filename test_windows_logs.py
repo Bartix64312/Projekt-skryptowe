@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 
 # Dodajemy katalog projektu do ścieżki
 sys.path.append(os.getcwd())
@@ -27,6 +28,19 @@ def test_windows():
 
             if not logs:
                 print("💡 Brak zdarzeń 4625 w dzienniku.")
+                
+                # Dodatkowa weryfikacja czy audytowanie jest włączone
+                try:
+                    audit_status = subprocess.run(
+                        "auditpol /get /subcategory:\"{0CCE9215-69AE-11D9-BED3-505054503030}\"", 
+                        capture_output=True, text=True, shell=True
+                    )
+                    if "No Auditing" in audit_status.stdout or "Brak" in audit_status.stdout:
+                        print("⚠️ UWAGA: Wygląda na to, że audytowanie logowań jest WYŁĄCZONE!")
+                        print("   Uruchom jako Admin: auditpol /set /subcategory:\"{0CCE9215-69AE-11D9-BED3-505054503030}\" /success:enable /failure:enable")
+                except Exception:
+                    pass
+
                 print("   Aby przetestować, spróbuj zalogować się do tego komputera")
                 print("   z innego urządzenia podając złe hasło (SMB/RDP).")
                 return

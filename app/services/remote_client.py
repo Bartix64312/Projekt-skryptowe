@@ -13,7 +13,7 @@ class RemoteClient:
         self.user = user
         self.port = port
         self.password = password
-        self.key_file = key_file
+        self.key_file = key_file if key_file else None
         self.client = None
         self.sftp = None
 

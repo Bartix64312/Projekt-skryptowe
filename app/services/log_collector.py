@@ -111,27 +111,30 @@ class LogCollector:
     # METODA 2: WINDOWS (PowerShell + XML Parsing)
     # =========================================================================
     @staticmethod
-    def get_windows_logs(win_client, last_fetch=None):
+    def get_windows_logs(win_client, last_fetch_time=None):
         logs = []
-
-        ps_filter = "LogName='Security'; Id=4625"
-
-        if last_fetch:
-            date_str = last_fetch.strftime('%Y-%m-%d %H:%M:%S')
-            ps_filter += f"; StartTime=[datetime]'{date_str}'"
-
-        limit_part = "-MaxEvents 20" if not last_fetch else ""
         
-        # Komenda PowerShell wzorowana na skrypcie 'collect_windows_logons_xml.ps1'.
-        # 1. Get-WinEvent (ID 4625 = Failed Login)
-        # 2. .ToXml() -> pozwala wyciągnąć IpAddress niezależnie od języka OS
-        # 3. ConvertTo-Json -> zwraca gotowy obiekt do Pythona
+        # Budujemy filtr dla PowerShell
+        # Jeśli mamy last_fetch_time, pobieramy logi nowsze niż ta data.
+        # Jeśli nie (pierwsze uruchomienie), pobieramy 20 ostatnich.
         
-        # TODO: Obsługa last_fetch_time w filtrze XML (dla studentów jako wyzwanie?)
-        # Na potrzeby demo pobieramy MaxEvents=20 najnowszych, żeby nie zapchać łącza
+        if last_fetch_time:
+            # Formatowanie daty dla PowerShell: 'yyyy-MM-dd HH:mm:ss'
+            ts_str = last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')
+            # StartTime musi być rzutowane na [datetime]
+            filter_script = f"@{{LogName='Security'; Id=4625; StartTime=[datetime]'{ts_str}'}}"
+            params = "" # Pobierz wszystko od tej daty
+        else:
+            filter_script = "@{LogName='Security'; Id=4625}"
+            params = "-MaxEvents 20" # Domyślny limit na start
+
+        # Komenda PowerShell:
+        # 1. Get-WinEvent z filtrem
+        # 2. ToXml() -> pozwala wyciągnąć IpAddress niezależnie od języka OS
+        # 3. Parsowanie XML i budowanie obiektu JSON
         
         ps_cmd = (
-            f"Get-WinEvent -FilterHashtable @{{{ps_filter}}} {limit_part} -ErrorAction SilentlyContinue | "
+            f"Get-WinEvent -FilterHashtable {filter_script} {params} -ErrorAction SilentlyContinue | "
             "ForEach-Object { "
             "   $xml = [xml]$_.ToXml(); "
             "   $data = @{}; "
@@ -146,10 +149,11 @@ class LogCollector:
         )
         
         print(f"DEBUG [Windows]: Executing PS XML extraction...") 
+        print(f"DEBUG CMD: {ps_cmd}") 
 
         try:
             stdout = win_client.run_ps(ps_cmd)
-            
+            print(f"stdout: {stdout}")
             if not stdout:
                 return [] # Brak logów lub błąd PS
 
