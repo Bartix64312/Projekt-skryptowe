@@ -2,7 +2,7 @@ from app import create_app, db
 from app.models import User
 
 app = create_app()
-with app.app_context():
+with app.app_context(): #automatycznie tworzy konto admina, jeżeli takowe jeszcze nie istnieje 
     if not User.query.filter_by(username='admin').first():
         u = User(username='admin')
         u.set_password('admin123')

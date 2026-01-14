@@ -2,7 +2,7 @@ from flask import Flask
 from config import Config
 from .extensions import db, migrate, login_manager, csrf
 
-def create_app(config_class=Config):
+def create_app(config_class=Config): #funkcja inicjalizująca aplikację
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -30,9 +30,6 @@ def create_app(config_class=Config):
     app.register_blueprint(ui_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth_bp)
-
-    # Wyłączenie CSRF dla API (fetch)
-    #csrf.exempt(api_bp)
 
     # Auto-tworzenie bazy (opcjonalne, jeśli używamy migracji, ale wygodne)
     with app.app_context():

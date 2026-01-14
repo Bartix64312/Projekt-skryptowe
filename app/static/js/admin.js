@@ -1,7 +1,5 @@
 import { createEl, clearContainer } from './dom.js';
-// Zauważ: Usuwamy importy fetchIPs itp., bo ich nie ma w api.js (student musi je dodać po napisaniu)
 import { fetchHosts, createHost, updateHost, removeHost } from './api.js'; 
-// TODO: Odkomentuj poniższy import, gdy uzupełnisz api.js
 import { fetchIPs, createIP, updateIP, removeIP } from './api.js';
 
 // --- SEKCJA HOSTÓW ---
@@ -31,10 +29,7 @@ export async function initAdmin() {
         document.getElementById('saveHostBtn').addEventListener('click', handleSaveHost);
     }
 
-    /* 
-    // TODO: ZADANIE 3 (Frontend) - THREAT INTEL
-    // Odkomentuj obsługę zdarzeń dla Rejestru IP, gdy odblokujesz HTML w config.html
-    */
+    //obsługa IP
     if (ipForm) ipForm.addEventListener('submit', handleAddIP);
     if (refreshIPsBtn) refreshIPsBtn.addEventListener('click', refreshIPs);
     if (document.getElementById('saveIPBtn')) {
@@ -48,17 +43,17 @@ export async function initAdmin() {
     if (hostsContainer) await refreshHosts();
 }
 
-// ======================= LOGIKA HOSTÓW (GOTOWA) =======================
+// LOGIKA HOSTÓW
 
 async function refreshHosts() {
     clearContainer(hostsContainer);
     try {
         const hosts = await fetchHosts();
-        hosts.forEach(renderHostRow);
+        hosts.forEach(renderHostRow); 
     } catch(e) { console.error(e); }
 }
 
-function renderHostRow(host) {
+function renderHostRow(host) { // hosty w panelu admina
     const item = createEl('div', ['list-group-item', 'd-flex', 'justify-content-between', 'align-items-center'], '', hostsContainer);
     
     const info = createEl('div', [], '', item);
@@ -70,7 +65,7 @@ function renderHostRow(host) {
     const btnGroup = createEl('div', ['btn-group', 'btn-group-sm'], '', item);
     
     const editBtn = createEl('button', ['btn', 'btn-outline-secondary'], '✏️', btnGroup);
-    editBtn.addEventListener('click', () => openHostModal(host));
+    editBtn.addEventListener('click', () => openHostModal(host)); //otwiera okienko edycji parametrów hosta
 
     const delBtn = createEl('button', ['btn', 'btn-outline-danger'], '🗑️', btnGroup);
     delBtn.addEventListener('click', async () => {
@@ -81,7 +76,7 @@ function renderHostRow(host) {
     });
 }
 
-async function handleAddHost(e) {
+async function handleAddHost(e) { //dodawanie hosta
     e.preventDefault();
     const data = {
         hostname: document.getElementById('hostName').value,
@@ -95,7 +90,7 @@ async function handleAddHost(e) {
     } catch(err) { alert(err.message); }
 }
 
-function openHostModal(host) {
+function openHostModal(host) { //okienko edycji hosta
     document.getElementById('editHostId').value = host.id;
     document.getElementById('editHostName').value = host.hostname;
     document.getElementById('editHostIP').value = host.ip_address;
@@ -103,7 +98,7 @@ function openHostModal(host) {
     hostModal.show();
 }
 
-async function handleSaveHost() {
+async function handleSaveHost() { //zapisywanie zmian po edycji hosta - podobne do dodawania hosta
     const id = document.getElementById('editHostId').value;
     const data = {
         hostname: document.getElementById('editHostName').value,
@@ -118,18 +113,13 @@ async function handleSaveHost() {
 }
 
 
-// ======================= LOGIKA IP REGISTRY (DO ODBLOKOWANIA) =======================
-
-/*
-// TODO: ZADANIE 3 (Frontend) - Odkomentuj całą poniższą sekcję
-// Uwaga: Funkcje fetchIPs, createIP itd. muszą zostać zaimplementowane w api.js!
-*/
+// REJESTR IP
 async function refreshIPs() {
     clearContainer(ipContainer);
     try {
-        const ips = await fetchIPs(); // <-- To musi działać w api.js
+        const ips = await fetchIPs(); 
         if(ips.length === 0) createEl('div', ['p-2', 'text-muted', 'small'], 'Pusto.', ipContainer);
-        ips.forEach(renderIPRow);
+        ips.forEach(renderIPRow); //renderowanie wiersza IP dla każdego
     } catch(e) { console.error("Błąd IP:", e); }
 }
 
@@ -145,7 +135,7 @@ function renderIPRow(ip) {
     createEl('span', ['fw-bold', 'font-monospace', 'me-2'], ip.ip_address, info);
 
     let timeStr = '-';
-    if (ip.last_seen && ip.last_seen !== '-') {
+    if (ip.last_seen && ip.last_seen !== '-') { // kiedy IP ostatnio widziane
         const utcDate = new Date(ip.last_seen.replace(" ", "T") + "Z");
         timeStr = utcDate.toLocaleString();
     }
@@ -153,10 +143,10 @@ function renderIPRow(ip) {
 
     const btnGroup = createEl('div', ['btn-group', 'btn-group-sm'], '', item);
     
-    const editBtn = createEl('button', ['btn', 'btn-outline-secondary'], '✏️', btnGroup);
-    editBtn.addEventListener('click', () => openIPModal(ip));
+    const editBtn = createEl('button', ['btn', 'btn-outline-secondary'], '✏️', btnGroup); //edytowanie
+    editBtn.addEventListener('click', () => openIPModal(ip)); 
 
-    const delBtn = createEl('button', ['btn', 'btn-outline-danger'], '🗑️', btnGroup);
+    const delBtn = createEl('button', ['btn', 'btn-outline-danger'], '🗑️', btnGroup);//usuwanie 
     delBtn.addEventListener('click', async () => {
         if(confirm(`Usunąć adres IP ${ip.ip_address} z rejestru?`)) {
             try {
@@ -167,6 +157,7 @@ function renderIPRow(ip) {
     });
 }
 
+//dodawanie IP - podobnie jak w hostach
 async function handleAddIP(e) {
     e.preventDefault();
     const data = {
@@ -180,14 +171,14 @@ async function handleAddIP(e) {
     } catch(err) { alert(err.message); }
 }
 
-function openIPModal(ip) {
+function openIPModal(ip) { //edycja IP
     document.getElementById('editIPId').value = ip.id;
     document.getElementById('editIPVal').value = ip.ip_address;
     document.getElementById('editIPStatus').value = ip.status;
     ipModal.show();
 }
 
-async function handleSaveIP() {
+async function handleSaveIP() { //zapis IP po edycji
     const id = document.getElementById('editIPId').value;
     const data = {
         ip_address: document.getElementById('editIPVal').value,

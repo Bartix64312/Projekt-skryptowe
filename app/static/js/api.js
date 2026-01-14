@@ -1,16 +1,20 @@
-function getCsrfToken() {
+function getCsrfToken() { //pomocnicza do pobierania tokena CSRF
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
 }
 
 async function secureFetch(url, options = {}) {
-    const headers = {
+    const headers = { //nagłówki HTTP
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken(),
         ...options.headers
     };
 
     const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401) {
+        throw new Error('401: Wymagane logowanie');
+    }
 
     if(!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -19,7 +23,7 @@ async function secureFetch(url, options = {}) {
     return response.json();
 }
 
-// --- HOSTS (GOTOWE - WZÓR) ---
+// HOSTS
 export async function fetchHosts() {
     return await secureFetch('/api/hosts');
 }
@@ -41,8 +45,8 @@ export async function removeHost(id) {
     });
 }
 
-// --- MONITORING / LOGI (GOTOWE) ---
-export async function checkHostStatus(id, osType) {
+//MONITORING I LOGI
+export async function checkHostStatus(id, osType) { //sprawdzanie statusu
     const endpoint = (osType === 'LINUX') 
         ? `/api/hosts/${id}/ssh-info` 
         : `/api/hosts/${id}/windows-info`;
@@ -50,13 +54,14 @@ export async function checkHostStatus(id, osType) {
     return await secureFetch(endpoint);
 }
 
-export async function triggerLogFetch(hostId) {
+export async function triggerLogFetch(hostId) { //pobieranie logów
     return await secureFetch(`/api/hosts/${hostId}/logs`, {
         method: 'POST'
     });
 }
 
-export async function fetchIPs() {
+// IP zarejestrowane 
+export async function fetchIPs() { 
     return await secureFetch('/api/ips');
 }
 
@@ -80,6 +85,7 @@ export async function removeIP(id) {
     });
 }
 
+//ALERTY
 export async function fetchAlerts() {
     return await secureFetch('/api/alerts');
 }

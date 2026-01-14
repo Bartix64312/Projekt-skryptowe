@@ -5,6 +5,7 @@ from app.forms import LoginForm
 
 auth_bp = Blueprint('auth', __name__)
 
+# obsługa logowania 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -12,7 +13,7 @@ def login():
 
     form = LoginForm()
 
-    if form.validate_on_submit():
+    if form.validate_on_submit(): #sprawdzanie po klieknięciu czy login i hasło dobre
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
@@ -23,9 +24,10 @@ def login():
 
     return render_template('login.html', form=form)
 
+# wylogowywanie 
 @auth_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
-    flash('Zostałeś wylogowany.', 'info')
+    flash('Zostałeś wylogowany.', 'info') #powiadomienie
     return redirect(url_for('ui.index'))

@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv() #zaczytywanie zmiennych z pliku .env, którego nie można przesyłać publicznie
 
-class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-bardzo-tajny')
+class Config: #wykorzystywane w create_app
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-bardzo-tajny') #2 wartość to fallback w przypadku gdy nie będzie wartości nr.1 w .env
     
     # Baza danych
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///../instance/lab7.db')

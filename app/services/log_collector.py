@@ -16,9 +16,7 @@ class LogCollector:
         'sudo': re.compile(r"sudo:\s+([a-zA-Z0-9._-]+)\s*:"),
     }
 
-    # =========================================================================
     # METODA 1: LINUX (SSH + Journalctl + Regex)
-    # =========================================================================
     @staticmethod
     def get_linux_logs(ssh_client, last_fetch_time=None):
         logs = []
@@ -107,9 +105,7 @@ class LogCollector:
             }
         return None
 
-    # =========================================================================
     # METODA 2: WINDOWS (PowerShell + XML Parsing)
-    # =========================================================================
     @staticmethod
     def get_windows_logs(win_client, last_fetch=None):
         logs = []
@@ -126,9 +122,6 @@ class LogCollector:
         # 1. Get-WinEvent (ID 4625 = Failed Login)
         # 2. .ToXml() -> pozwala wyciągnąć IpAddress niezależnie od języka OS
         # 3. ConvertTo-Json -> zwraca gotowy obiekt do Pythona
-        
-        # TODO: Obsługa last_fetch_time w filtrze XML (dla studentów jako wyzwanie?)
-        # Na potrzeby demo pobieramy MaxEvents=20 najnowszych, żeby nie zapchać łącza
         
         ps_cmd = (
             f"Get-WinEvent -FilterHashtable @{{{ps_filter}}} {limit_part} -ErrorAction SilentlyContinue | "
@@ -149,7 +142,7 @@ class LogCollector:
 
         try:
             stdout = win_client.run_ps(ps_cmd)
-            
+            print(f"stdout: {stdout}")
             if not stdout:
                 return [] # Brak logów lub błąd PS
 

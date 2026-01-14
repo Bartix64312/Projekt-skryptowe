@@ -7,7 +7,7 @@ const alertsBody = document.getElementById('alertsBody');
 
 let chartInstance = null;
 
-export async function initDashboard() {
+export async function initDashboard() { //inicjalizacja dashboardu
     if (!hostsContainer) return;
 
     await refreshHostsList();
@@ -18,18 +18,19 @@ export async function initDashboard() {
     }
 }
 
-async function refreshChart() {
+async function refreshChart() { //rysowanie wykresu
     const ctx = document.getElementById('attacksChart');
     if (!ctx) return;
 
     try {
+        //zapytanie do serwera po statystyki, CSRF dla bazpieczeństwa 
         const res = await fetch('/api/stats/alerts', {headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}});
         const data = await res.json();
 
         if (chartInstance) chartInstance.destroy();
 
         chartInstance = new Chart(ctx, {
-            type: 'bar', 
+            type: 'bar', //słupkowy
             data: {
                 labels: data.labels,
                 datasets: [{
@@ -63,7 +64,12 @@ async function refreshChart() {
     } catch (e) { console.error("Chart Error", e); }
 }
 
-async function refreshHostsList() {
+//pobieranie listy maszyn (hostów)
+async function refreshHostsList() { 
+    if (hostsContainer.querySelector('.alert-warning')){
+        return;
+    }
+
     clearContainer(hostsContainer);
     try {
         const hosts = await fetchHosts();
@@ -78,7 +84,8 @@ async function refreshHostsList() {
     }
 }
 
-function renderDashboardRow(host) {
+//tworzenie wiersza dla konkretnego hosta
+function renderDashboardRow(host) { 
     const item = createEl('div', ['list-group-item', 'py-3', 'border-bottom'], '', hostsContainer);
     const row = createEl('div', ['row', 'align-items-center', 'flex-nowrap', 'g-0'], '', item);
     
@@ -106,6 +113,7 @@ function renderDashboardRow(host) {
     logsBtn.addEventListener('click', () => handleFetchLogs(host, logsBtn));
 }
 
+//uruchamiana po kliknięciu status (parametry sprawdza)
 async function handleCheckStatusFancy(host, container, btn) {
     if(btn.disabled) return;
     const originalText = btn.textContent;
@@ -115,7 +123,7 @@ async function handleCheckStatusFancy(host, container, btn) {
     createEl('div', ['text-muted', 'small', 'text-center'], 'Łączenie...', container);
 
     try {
-        const data = await checkHostStatus(host.id, host.os_type);
+        const data = await checkHostStatus(host.id, host.os_type); //zapytanie backendu o stan hosta
         clearContainer(container);
         const badgesRow = createEl('div', ['d-flex', 'justify-content-between', 'align-items-center', 'w-100'], '', container);
         addBadge(badgesRow, 'RAM', `${data.free_ram_mb} MB`, 'text-success');
@@ -128,10 +136,11 @@ async function handleCheckStatusFancy(host, container, btn) {
         createEl('div', ['text-danger', 'small', 'fw-bold', 'text-center'], 'Błąd', container);
         btn.innerHTML = 'Ponów';
     } finally {
-        btn.disabled = false;
+        btn.disabled = false; //odblokowanie przycisku
     }
 }
 
+//po kliknięciu przycisku logi uruchamiana 
 async function handleFetchLogs(host, btn) {
     if(btn.disabled) return;
     const originalText = btn.textContent;
@@ -149,14 +158,14 @@ async function handleFetchLogs(host, btn) {
             btn.classList.remove('btn-outline-dark');
             btn.classList.add('btn-success');
         }
-        setTimeout(() => {
+        setTimeout(() => { //po 3s powrót do normalnego wyglądu przycisku
             btn.textContent = originalText;
             btn.disabled = false;
             btn.classList.remove('btn-danger', 'btn-success');
             btn.classList.add('btn-outline-dark');
         }, 3000);
 
-        await refreshAlertsTable();
+        await refreshAlertsTable(); //odświeża tabele alertów
 
     } catch (err) {
         alert("Błąd pobierania logów: " + err.message);
@@ -186,7 +195,7 @@ async function refreshAlertsTable() {
 
     try {
         
-        const alerts = await fetchAlerts();  
+        const alerts = await fetchAlerts();  //lista alertów z API
 
         if (alerts.length === 0) {
             const row = createEl('tr', [], '', alertsBody);
@@ -204,6 +213,7 @@ async function refreshAlertsTable() {
             let sideColor = "#6c757d"; 
             let textColor = "text-white";
 
+            //w zależności od powagi
             if (alert.severity === 'CRITICAL') {
                 sideColor = "#dc3545"; 
                 textColor = "text-danger";
@@ -215,9 +225,9 @@ async function refreshAlertsTable() {
                 textColor = "text-info";
             }
 
-            row.style.borderLeft = `5px solid ${sideColor}`;
+            row.style.borderLeft = `5px solid ${sideColor}`; //przypisuje kolor wyświetlany w tabeli po lewo
     
-
+            //wypełnia informacje o alercie
             createEl('td', [], alert.timestamp, row);
             createEl('td', ['fw-bold'], alert.host_name, row);
             createEl('td', [textColor], alert.alert_type, row);
@@ -226,6 +236,7 @@ async function refreshAlertsTable() {
 
              const badgeCell = createEl('td', [], '', row);
     
+             //plakietki w odpowiednim kolorze (te po prawo)
             let badgeClass = '';
             if (alert.severity === 'CRITICAL') {
                 badgeClass = 'bg-danger text-white'; 

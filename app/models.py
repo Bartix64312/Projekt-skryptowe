@@ -11,7 +11,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256))
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password) #hashowanie hasła
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password) 
@@ -24,9 +24,11 @@ class Host(db.Model):
     ip_address = db.Column(db.String(15), unique=True, nullable=False)
     os_type = db.Column(db.String(20))  # WINDOWS, LINUX
     
+    #relacje - 1 host może mieć wiele alertów oraz logów, dynamic zwraca rapytanie a nie listę (optymalizacja)
     logs_sources = db.relationship('LogSource', backref='host', lazy='dynamic', cascade="all, delete-orphan")
     alerts = db.relationship('Alert', backref='host', lazy='dynamic', cascade="all, delete-orphan")
 
+    #przygotowanie danych pod API
     def to_dict(self):
         return {
             'id': self.id,
@@ -46,7 +48,7 @@ class LogArchive(db.Model):
     __tablename__ = 'log_archives'
     id = db.Column(db.Integer, primary_key=True)
     host_id = db.Column(db.Integer, db.ForeignKey('hosts.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))   
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc)) #czas pobrania logu   
     filename = db.Column(db.String(200), nullable=False)
     record_count = db.Column(db.Integer, default=0)
 
@@ -61,7 +63,7 @@ class Alert(db.Model):
     __tablename__ = 'alerts'
     id = db.Column(db.Integer, primary_key=True)
     host_id = db.Column(db.Integer, db.ForeignKey('hosts.id'), nullable=True)
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc)) #czas utworzenia alertu
     alert_type = db.Column(db.String(50))
     message = db.Column(db.Text)
     severity = db.Column(db.String(20), default='WARNING')

@@ -17,12 +17,14 @@ api_bp = Blueprint("api_hosts", __name__)
 
 # --- CRUD HOSTS (GOTOWE - ABY UI DZIAŁAŁO) ---
 
+#wyświetlanie hostów
 @api_bp.route("/hosts", methods=["GET"])
 @login_required
 def get_hosts():
     hosts = Host.query.all()
     return jsonify([h.to_dict() for h in hosts])
 
+#dodawanie hostów
 @api_bp.route("/hosts", methods=["POST"])
 @login_required
 def add_host():
@@ -35,6 +37,7 @@ def add_host():
     db.session.commit()
     return jsonify(new_host.to_dict()), 201
 
+#usuwanie hostów
 @api_bp.route("/hosts/<int:host_id>", methods=["DELETE"])
 @login_required
 def delete_host(host_id):
@@ -43,6 +46,7 @@ def delete_host(host_id):
     db.session.commit()
     return jsonify({"message": "Usunięto hosta"}), 200
 
+#edycja hostów
 @api_bp.route("/hosts/<int:host_id>", methods=["PUT"])
 @login_required
 def update_host(host_id):
@@ -54,8 +58,9 @@ def update_host(host_id):
     db.session.commit()
     return jsonify(host.to_dict()), 200
 
-# --- MONITORING LIVE (GOTOWE) ---
+# MONITORING LIVE 
 
+# vagrant (albo remote host) - informacje
 @api_bp.route("/hosts/<int:host_id>/ssh-info", methods=["GET"])
 @login_required
 def get_ssh_info(host_id):
@@ -86,6 +91,7 @@ def get_ssh_info(host_id):
     except Exception as e:
         return jsonify({"error": f"Błąd połączenia: {str(e)}"}), 500
 
+#windows - informacje o parametrach
 @api_bp.route("/hosts/<int:host_id>/windows-info", methods=["GET"])
 @login_required
 def get_windows_info(host_id):
@@ -106,17 +112,16 @@ def get_windows_info(host_id):
         uptime_seconds = (datetime.now() - boot_time).total_seconds()
         hours = int(uptime_seconds // 3600)
         minutes = int((uptime_seconds % 3600) // 60)
+
         return jsonify({
             "free_ram_mb": free_ram_mb, "disk_info": disk_percentage,
             "disk_total": disk_total, "cpu_load": cpu_load, "uptime_hours": f"{hours}h {minutes}m"
         }), 200
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ===================================================================
-# MIEJSCE NA TWOJĄ IMPLEMENTACJĘ (ZADANIE 2 i 3)
-# ===================================================================
-
+# pobieranie logów 
 @api_bp.route("/hosts/<int:host_id>/logs", methods=["POST"])
 @login_required
 def fetch_logs(host_id):
@@ -143,7 +148,7 @@ def fetch_logs(host_id):
             # Context Manager dla połączenia SSH
             with RemoteClient(host=host.ip_address, user=ssh_user, port=ssh_port, key_file=ssh_key) as client:
                 # Przekazujemy last_fetch aby pobrać tylko nowe logi
-                logs = LogCollector.get_linux_logs(client, last_fetch_time=None)
+                logs = LogCollector.get_linux_logs(client, last_fetch_time=last_fetch_time)
 
         elif host.os_type == "WINDOWS":
             # Context Manager dla klienta Windows (lokalny powershell/wmi)
@@ -183,6 +188,7 @@ def fetch_logs(host_id):
         db.session.rollback()
         return jsonify({"error": f"Processing failed: {str(e)}"}), 500
     
+# wyświetlanie alertów
 @api_bp.route("/alerts", methods=["GET"])
 @login_required
 def get_recent_alerts():
@@ -193,40 +199,33 @@ def get_recent_alerts():
     for alert in alerts:
         current_status = ip_registry.get(alert.source_ip, 'UNKNOWN')
         
-        msg = alert.message
-        display_severity = 'WARNING' 
+        # Pobieramy dane z bazy, ale nadpisujemy je aktualnym stanem wiedzy, dynamiczna zmiana statusów 
+        display_severity = alert.severity
+        display_message = alert.message
+
         if current_status == 'BANNED':
             display_severity = 'CRITICAL'
-            if "BANNED" not in msg:
-                msg = f"SECURITY BREACH: Attack from BANNED IP {alert.source_ip}"
+            # Jeśli wiadomość nie zawiera jeszcze informacji o banie, podmień ją
+            if "BANNED" not in display_message:
+                display_message = f"SECURITY BREACH: Attack from BANNED IP {alert.source_ip}"
         
         elif current_status == 'TRUSTED':
             display_severity = 'INFO'
-            msg = msg.replace("SECURITY BREACH: ", "").replace("Attack from BANNED IP", "Activity from")
-            msg = f"[TRUSTED] {msg}"
-            
-        else: 
-            if alert.severity == 'INFO':
-                display_severity = 'INFO'
-            else:
-                display_severity = 'WARNING'
-            msg = msg.replace("SECURITY BREACH: ", "")
-            msg = msg.replace("Attack from BANNED IP", "Suspicious attempt from")
+            display_message = f"[TRUSTED] {display_message.replace('Suspicious ', 'Activity ')}"
 
-        host_name = alert.host.hostname if alert.host else "Unknown"
-        
         results.append({
             "id": alert.id,
             "severity": display_severity, 
             "timestamp": alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            "message": msg,
-            "host_name": host_name,
+            "message": display_message,
+            "host_name": alert.host.hostname if alert.host else "Unknown",
             "alert_type": alert.alert_type,
             "source_ip": alert.source_ip
         })
         
     return jsonify(results)
 
+# statystyki alertów
 @api_bp.route("/stats/alerts", methods=["GET"])
 @login_required
 def get_alert_stats():
@@ -242,7 +241,7 @@ def get_alert_stats():
     
     return jsonify({"labels": labels, "values": values})
 
-
+#pobieranie adresów IP
 @api_bp.route("/ips", methods=["GET"])
 @login_required
 def get_ips():
@@ -257,7 +256,7 @@ def get_ips():
         })
     return jsonify(results)
 
-
+#dodawanie adresów IP
 @api_bp.route("/ips", methods=["POST"])
 @login_required
 def add_ip():
@@ -276,7 +275,7 @@ def add_ip():
     db.session.commit()
     return jsonify({"message": "Dodano adres IP"}), 201
 
-
+#edycja adresów IP
 @api_bp.route("/ips/<int:ip_id>", methods=["PUT"])
 @login_required
 def update_ip(ip_id):
@@ -289,6 +288,7 @@ def update_ip(ip_id):
     db.session.commit()
     return jsonify({"message": "Zaktualizowano status IP"}), 200
 
+#usuwanie adresów IP
 @api_bp.route("/ips/<int:ip_id>", methods=["DELETE"])
 @login_required
 def delete_ip(ip_id):

@@ -32,10 +32,10 @@ class DataManager:
                 df[col] = None
 
         # 3. Generujemy nazwę pliku
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H')
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H') #zapis parquet co godzinę żeby nie tworzyć dużej ilości
         filename = f"logs_{host_id}_{timestamp_str}.parquet"
         
-        # ZAMIANA: Łączenie ścieżek operatorem '/' (Path) zamiast os.path.join
+        # Łączenie ścieżek operatorem '/' (Path) zamiast os.path.join
         file_path = DataManager.STORAGE_DIR / filename
         
         # 4. Zapis
@@ -54,10 +54,10 @@ class DataManager:
         """
         DataManager.ensure_storage()
         
-        # ZAMIANA: Łączenie ścieżek
+        # Łączenie ścieżek
         file_path = DataManager.STORAGE_DIR / filename
         
-        # ZAMIANA: Metoda .exists() obiektu Path zamiast os.path.exists()
+        # Metoda .exists() obiektu Path zamiast os.path.exists()
         if not file_path.exists():
             print(f"Warning: Plik {filename} nie istnieje.")
             return pd.DataFrame()
