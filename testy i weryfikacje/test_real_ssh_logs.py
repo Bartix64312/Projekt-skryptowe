@@ -1,5 +1,5 @@
 import os
-from config import Config
+from testy i weryfikacje.config import Config
 from app.services.remote_client import RemoteClient
 from app.services.log_collector import LogCollector
 

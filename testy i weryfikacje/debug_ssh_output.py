@@ -1,6 +1,6 @@
 import os
 import json
-from config import Config
+from testy i weryfikacje.config import Config
 from app.services.remote_client import RemoteClient
 
 def main():

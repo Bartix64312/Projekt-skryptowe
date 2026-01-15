@@ -1,5 +1,5 @@
 import paramiko
-from config import Config
+from testy i weryfikacje.config import Config
 
 def main():
     host = "127.0.0.1"
