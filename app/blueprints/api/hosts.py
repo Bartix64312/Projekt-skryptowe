@@ -15,8 +15,7 @@ from app.extensions import db
 
 api_bp = Blueprint("api_hosts", __name__)
 
-# --- CRUD HOSTS (GOTOWE - ABY UI DZIAŁAŁO) ---
-
+# CRUD HOSTS 
 #wyświetlanie hostów
 @api_bp.route("/hosts", methods=["GET"])
 @login_required

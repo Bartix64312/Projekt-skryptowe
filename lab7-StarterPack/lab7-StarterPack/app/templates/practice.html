@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Warsztat miniSIEM{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <h2 class="mb-4">Zarządzanie Hostami</h2>
+    
+    <!-- Formularz dodawania -->
+    <form id="hostForm" class="row g-3 mb-5 border p-4 rounded shadow-sm bg-light">
+      <div class="col-md-4">
+        <label for="hostname" class="form-label">Nazwa Hosta</label>
+        <input type="text" class="form-control" id="hostname" required>
+      </div>
+      <div class="col-md-4">
+        <label for="ip_address" class="form-label">Adres IP</label>
+        <input type="text" class="form-control" id="ip_address" required 
+               pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" 
+               title="Wprowadź poprawny adres IPv4">
+      </div>
+      <div class="col-md-4">
+        <label for="os_type" class="form-label">System Operacyjny</label>
+        <select class="form-select" id="os_type">
+            <option value="LINUX">Linux</option>
+            <option value="WINDOWS">Windows</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">Dodaj Hosta</button>
+      </div>
+    </form>
+
+    <!-- Tabela Hostów -->
+    <h3 class="mb-3">Lista Monitorowanych Maszyn</h3>
+    <div id="hostsContainer" class="list-group">
+        <!-- Tutaj JS wygeneruje listę -->
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -26,7 +26,8 @@ class LogAnalyzer:
             return 0
 
         # 2. Filtrowanie: Interesują nas tylko ataki
-        attack_pattern = ['FAILED_LOGIN', 'INVALID_USER', 'WIN_FAILED_LOGIN']
+       
+        attack_pattern = ['FAILED_LOGIN', 'INVALID_USER', 'WIN_FAILED_LOGIN', 'SUDO_USAGE']
         threats = df[df['alert_type'].isin(attack_pattern)]
         
         if threats.empty:

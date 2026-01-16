@@ -13,7 +13,7 @@ class LogCollector:
     LINUX_PATTERNS = {
         'failed_password': re.compile(r"Failed password for (?:invalid user )?([\w.-]+) from ([\d.]+)"),
         'invalid_user': re.compile(r"Invalid user ([\w.-]+) from ([\d.]+)"),
-        'sudo': re.compile(r"sudo:\s+([a-zA-Z0-9._-]+)\s*:"),
+        'sudo': re.compile(r"\s*([\w.-]+)\s*:\s*TTY="),
     }
 
     # METODA 1: LINUX (SSH + Journalctl + Regex)
@@ -22,7 +22,8 @@ class LogCollector:
         logs = []
         
         # Budowanie komendy: pobierz JSON z journalctl
-        cmd = "sudo journalctl -u ssh -o json --no-pager"
+
+        cmd = "sudo journalctl SYSLOG_IDENTIFIER=sshd SYSLOG_IDENTIFIER=sudo -o json --no-pager"
         
         if last_fetch_time:
             since_str = last_fetch_time.strftime("%Y-%m-%d %H:%M:%S")
