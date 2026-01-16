@@ -21,8 +21,8 @@ def generate_failures():
         
         time.sleep(1)
 
-    print("\n✅ Zakończono generowanie zdarzeń.")
-    print("💡 Sprawdź teraz 'python test_windows_logs.py'")
+    print("\n Zakończono generowanie zdarzeń.")
+    print(" Sprawdź teraz 'python test_windows_logs.py'")
 
 if __name__ == "__main__":
     generate_failures()

@@ -8,7 +8,7 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-bardzo-tajny')
     
     # Baza danych
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///../instance/lab7.db')
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///instance/lab7.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Konfiguracja SSH (Domyślne dla Vagranta)

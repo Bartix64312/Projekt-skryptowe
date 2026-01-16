@@ -1,5 +1,5 @@
 from flask import Flask
-from testy i weryfikacje.config import Config
+from config import Config
 from .extensions import db, migrate, login_manager, csrf
 
 def create_app(config_class=Config):
